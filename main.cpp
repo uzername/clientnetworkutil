@@ -192,8 +192,7 @@ int main(int argc, char** argv) {
         if (strlen(data->buffer)>0 && (data->buffer[strlen (data->buffer) - 1] == '\n') ) {
             data->buffer[strlen (data->buffer) - 1] = '\0';
         }
-        char c;
-        while((c = getchar()) != '\n' && c != EOF) {  }
+        if (strlen(data->buffer) == 0) {continue;}
         zn_send(tcp, send_string(data->buffer), on_client_sent, data);
     }
     return 0;
