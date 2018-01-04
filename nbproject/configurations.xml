@@ -4,6 +4,8 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>zn_buffer.h</itemPath>
+      <itemPath>zn_bufferpool.h</itemPath>
       <itemPath>znet.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
@@ -42,6 +44,10 @@
       </compileType>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>
+      <item path="zn_buffer.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="zn_bufferpool.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="znet.h" ex="false" tool="3" flavor2="0">
       </item>
     </conf>
@@ -66,6 +72,10 @@
         </asmTool>
       </compileType>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="zn_buffer.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="zn_bufferpool.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="znet.h" ex="false" tool="3" flavor2="0">
       </item>
