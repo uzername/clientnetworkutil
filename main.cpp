@@ -3,9 +3,11 @@
 #include "zn_buffer.h"
 #include "zn_bufferpool.h"
 
+#define send_string(str) str, sizeof(str)-1
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 //cycle handler. main service of znet library
 zn_State *S;
@@ -198,9 +200,18 @@ int main(int argc, char **argv) {
     init_client();
     printf("%s :: %d\n", addr, port);
     register_interrupted();
+    uint8_t stopped = 0;
     zn_run(S, ZN_RUN_LOOP);
-    while (true) {
-          
+    char buffer[DATA_SIZE];
+    while (stopped == 0) {
+        //  https://stackoverflow.com/questions/1247989/how-do-you-allow-spaces-to-be-entered-using-scanf
+        fgets(buffer, DATA_SIZE, stdin);
+        if (strlen(buffer)>0 && (buffer[strlen (buffer) - 1] == '\n') ) {
+            buffer[strlen(buffer) - 1] = '\0';
+        }
+        char c;
+        while((c = getchar()) != '\n' && c != EOF) {  }
+        zn_send(tcpGlobal, send_string(buffer), on_send, data);
     }
     
     return 0;
