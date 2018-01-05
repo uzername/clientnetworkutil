@@ -9,6 +9,13 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef _WIN32
+//required for multithreaded environment
+#include <windows.h>
+#else
+//use pthread library
+#endif
+
 //cycle handler. main service of znet library
 zn_State *S;
 //client instance (structure)
@@ -16,6 +23,8 @@ zn_Tcp *tcpGlobal;
 /*the interface is targeted by send/recv method, so it's very useful to make znet 
  * send data continually and receive packets by packets.*/
 zn_BufferPool pool;
+/*First time initialized in init_client(), lately this pointer is referred as ud in callbacks*/
+zn_BufferPoolNode *node;
 
 #define INTERVAL 5000
 #define DATA_SIZE 1024
@@ -104,7 +113,7 @@ static zn_Time on_client(void *ud, zn_Timer *timer, zn_Time elapsed) {
 */
 //perform connection
 static void init_client() {
-    zn_BufferPoolNode *node = zn_getbuffer(&pool);
+    /*zn_BufferPoolNode*/node = zn_getbuffer(&pool);
     tcpGlobal = zn_newtcp(S);
     zn_recvonheader(&node->recv, on_header, node);
     zn_recvonpacket(&node->recv, on_packet, node);
@@ -112,7 +121,7 @@ static void init_client() {
     node->tcp = tcpGlobal;
     zn_connect(tcpGlobal, addr, port, on_connect, node);
 }
-
+/*
 static void init_data(void) {
     int count = 2;
     const char *padding = "Hello world\r\n";
@@ -123,6 +132,13 @@ static void init_data(void) {
         strcpy(data+count, padding);
         count += paddlen;
     }
+}
+*/
+static void init_data(void) {
+    const char *padding = "Hello world\0";
+    size_t paddlen = strlen(padding);
+    short len = htons(DATA_SIZE);
+    memcpy(data, padding, paddlen);
 }
 
 static zn_Time on_timer(void *ud, zn_Timer *timer, zn_Time elapsed) {
@@ -173,6 +189,36 @@ static void register_interrupted(void) {
 }
 #endif
 
+//declare thread functions
+#ifdef _WIN32
+//  https://msdn.microsoft.com/ru-ru/library/windows/desktop/ms682516(v=vs.85).aspx
+    DWORD WINAPI MyThreadFunction( LPVOID lpParam ) {
+        uint8_t stopped = 0;
+        char buffer[DATA_SIZE];
+        while (stopped == 0) {
+            //  https://stackoverflow.com/questions/1247989/how-do-you-allow-spaces-to-be-entered-using-scanf
+            //  reasconsole may work too
+            fgets(buffer, DATA_SIZE, stdin);
+            if (strlen(buffer)>0 && (buffer[strlen (buffer) - 1] == '\n') ) {
+                buffer[strlen(buffer) - 1] = '\0';
+            }
+            /*
+            char c;
+            while((c = getchar()) != '\n' && c != EOF) {  }
+             */
+            //zn_send(tcpGlobal, send_string(buffer), on_send, node);
+            if (zn_sendprepare(&node->send, buffer, strlen(buffer) ))
+            zn_send(node->tcp,
+                zn_sendbuff(&node->send),
+                zn_sendsize(&node->send), on_send, node);
+        }
+        
+        return 0;
+    }
+#else
+
+#endif
+
 int main(int argc, char **argv) {
     zn_Timer *t1, *t2;
     strcpy(addr, "127.0.0.1");
@@ -200,19 +246,24 @@ int main(int argc, char **argv) {
     init_client();
     printf("%s :: %d\n", addr, port);
     register_interrupted();
-    uint8_t stopped = 0;
+    
+    #ifdef _WIN32
+     HANDLE hThread;
+     DWORD ThreadID;
+     hThread = CreateThread( 
+            NULL,                   // default security attributes
+            0,                      // use default stack size  
+            MyThreadFunction,       // thread function name
+            NULL,          // argument to thread function 
+            0,                      // use default creation flags 
+            &ThreadID);   // returns the thread identifier
+    #else
+
+    #endif
+    
+    //blocks the running thread
     zn_run(S, ZN_RUN_LOOP);
-    char buffer[DATA_SIZE];
-    while (stopped == 0) {
-        //  https://stackoverflow.com/questions/1247989/how-do-you-allow-spaces-to-be-entered-using-scanf
-        fgets(buffer, DATA_SIZE, stdin);
-        if (strlen(buffer)>0 && (buffer[strlen (buffer) - 1] == '\n') ) {
-            buffer[strlen(buffer) - 1] = '\0';
-        }
-        char c;
-        while((c = getchar()) != '\n' && c != EOF) {  }
-        zn_send(tcpGlobal, send_string(buffer), on_send, data);
-    }
+    
     
     return 0;
 }
